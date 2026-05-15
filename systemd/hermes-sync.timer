@@ -1,0 +1,14 @@
+[Unit]
+Description=Hermes Sync 定时器 — 自动备份
+Requires=hermes-sync.service
+
+[Timer]
+# 修改间隔（默认30分钟）
+OnCalendar=*:0/30
+# 开机后2分钟再开始
+OnBootSec=2min
+# 错过触发时补上
+Persistent=true
+
+[Install]
+WantedBy=timers.target

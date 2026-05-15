@@ -1,0 +1,19 @@
+[Unit]
+Description=Hermes Sync — 自动备份到 GitHub
+Documentation=https://github.com/jmfjiang1031-collab/hermes-sync-tool
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# 修改为你的 sync-push.sh 路径
+ExecStart=%h/.hermes-sync/scripts/sync-push.sh
+WorkingDirectory=%h/.hermes-sync
+Environment="HOME=%h"
+StandardOutput=journal
+StandardError=journal
+# 网络问题时不重试，等下次定时器触发
+Restart=no
+
+[Install]
+WantedBy=default.target
