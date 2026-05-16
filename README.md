@@ -27,8 +27,15 @@ Desktop ──(auto push every 30min)──→  GitHub Repo  ←──(auto push
 
 ## Quick Start
 
-### 1. Create a GitHub Token
+### 1. Choose Authentication Method
 
+**SSH (recommended for China)**: More reliable in mainland China.
+```bash
+bash scripts/setup-ssh.sh
+# Then add the printed public key to: https://github.com/settings/ssh/new
+```
+
+**HTTPS + Token**: Works everywhere, no SSH setup needed.
 Visit [github.com/settings/tokens](https://github.com/settings/tokens) → Generate new token (classic) → Check **`repo`** → Generate.
 
 ### 2. Install
@@ -115,6 +122,8 @@ When prompted, choose **"Use existing private repo"** and enter the same GitHub 
 - **systemd** (Linux/WSL) or cron (macOS)
 - **Hermes Agent** (optional — can sync config only)
 
+> **WSL users**: After each WSL restart, cron must be started manually. Run `scripts/setup-sudoers.sh` once to enable password-less `sudo service cron start`. The systemd timer will auto-start cron on each sync cycle.
+
 ---
 
 ## Architecture
@@ -144,10 +153,14 @@ When prompted, choose **"Use existing private repo"** and enter the same GitHub 
 
 | Problem | Solution |
 |---------|----------|
-| Push fails | Check network and Token validity |
+| Push fails (China) | Switch to SSH: `bash scripts/setup-ssh.sh` |
+| Push reports success but nothing arrived | Old script bug — update to v1.2+ which has pipefail fix |
 | Token expired | Re-run `setup.sh` or update `~/.hermes-sync/.github-token` |
+| SSH connection timeout | Check if port 22 is blocked; use HTTPS+Token fallback |
 | systemd timer not running | `systemctl --user status hermes-sync.timer` |
 | Conflicts on pull | Check `~/.hermes-sync/backups/` for saved versions |
+| WSL: cron not running after reboot | `sudo service cron start` (one-time) or run `setup-sudoers.sh` |
+| `.usage.json` merge conflicts | Fixed in v1.2 — file now excluded from sync |
 
 Full guide: [docs/troubleshooting.md](docs/troubleshooting.md)
 

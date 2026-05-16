@@ -27,8 +27,15 @@
 
 ## 快速开始
 
-### 1. 创建 GitHub Token
+### 1. 选择认证方式
 
+**SSH 密钥（国内推荐）**：在国内网络环境下更稳定。
+```bash
+bash scripts/setup-ssh.sh
+# 然后将打印的公钥添加到: https://github.com/settings/ssh/new
+```
+
+**HTTPS + Token**：通用方式，无需 SSH 配置。
 打开 [github.com/settings/tokens](https://github.com/settings/tokens) → Generate new token (classic) → 勾选 **`repo`** →  Generate → 复制 Token。
 
 ### 2. 一键安装
@@ -153,10 +160,14 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 
 | 问题 | 解决方法 |
 |------|----------|
-| 推送失败 | 检查网络和 Token 是否过期 |
+| 推送失败（国内） | 切换为 SSH：`bash scripts/setup-ssh.sh` |
+| 推送显示成功但对方没收到 | 旧版脚本 bug — 升级到 v1.2+ 修复了管道吞退出码 |
 | Token 过期 | 重新运行安装脚本或手动更新 `~/.hermes-sync/.github-token` |
+| SSH 连接超时 | 可能是端口 22 被封，改用 HTTPS+Token |
 | systemd 定时器没运行 | `systemctl --user status hermes-sync.timer` |
 | 拉取时有冲突 | 旧文件被备份到 `~/.hermes-sync/backups/` |
+| WSL 重启后 cron 不运行 | `sudo service cron start`（一次性）或运行 `setup-sudoers.sh` |
+| `.usage.json` 合并冲突 | v1.2 已修复 — 该文件已移出同步列表 |
 
 详细文档：[docs/troubleshooting.md](docs/troubleshooting.md)
 

@@ -11,6 +11,14 @@
 # 方式3: ~/.hermes-sync/.github-token 文件
 
 # ------------------------------------------------------------------
+# 认证方式
+#   auto  — 自动检测（优先 SSH，不可用时回退 HTTPS+Token）
+#   ssh   — 强制使用 SSH（需提前配置 ~/.ssh/config）
+#   https — 强制使用 HTTPS+Token（国内 SSH 被封时使用）
+# ------------------------------------------------------------------
+AUTH_METHOD=auto
+
+# ------------------------------------------------------------------
 # 同步间隔（分钟）
 # 用于 systemd 定时器或 crontab
 # ------------------------------------------------------------------
@@ -47,7 +55,7 @@ SYNC_ITEMS=profiles,skills,memories,cron,SOUL.md,config.yaml,.hermes_history,hoo
 # 排除模式（逗号分隔，glob 格式）
 # 这些文件/目录不会被同步
 # ------------------------------------------------------------------
-EXCLUDE_ITEMS=node_modules/,venv/,__pycache__/,*.pyc,.env,*.bak,cache/,audio_cache/,image_cache/,logs/,state.db*,kanban.db*,response_store.db*,gateway.*,processes.json,sessions/,checkpoints/,state-snapshots/
+EXCLUDE_ITEMS=node_modules/,venv/,__pycache__/,*.pyc,.env,*.bak,cache/,audio_cache/,image_cache/,logs/,state.db*,kanban.db*,response_store.db*,gateway.*,processes.json,sessions/,checkpoints/,state-snapshots/,.usage.json
 
 # ------------------------------------------------------------------
 # 日志级别

@@ -3,6 +3,7 @@
 # Hermes Sync — 下载脚本 (GitHub → 本地)
 # ============================================================
 set -e
+set -o pipefail  # 确保管道中任一命令失败都能被捕获
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
@@ -29,12 +30,12 @@ fi
 # 确保 remote 正确
 USERNAME=$(get_github_username "$TOKEN")
 if [ -n "$USERNAME" ]; then
-    ensure_remote "$TOKEN" "$USERNAME" "hermes-sync"
+    ensure_remote "$USERNAME" "hermes-sync"
 fi
 
-# --- 拉取 ---
+# --- 拉取（使用认证感知的拉取函数） ---
 log_info "正在从 GitHub 拉取..."
-if ! git pull origin "$GIT_BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
+if ! git_pull_with_auth "$GIT_BRANCH" | tee -a "$LOG_FILE"; then
     log_warn "拉取失败（网络问题或仓库不存在）"
     exit 0
 fi

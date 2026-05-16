@@ -2,6 +2,7 @@
 # ============================================================
 # Hermes Sync — 公共函数库
 # 被所有同步脚本引用，提供统一的日志、配置、Token管理
+# 支持 SSH 和 HTTPS+Token 两种认证方式
 # ============================================================
 
 # --- 路径常量 ---
@@ -17,6 +18,7 @@ LAST_PULL_FILE="${HERMES_SYNC_DIR}/.last-pull-time"
 DEFAULT_SYNC_INTERVAL=30          # 分钟
 DEFAULT_CONFLICT_STRATEGY="backup"  # backup | skip | overwrite
 DEFAULT_GIT_BRANCH="main"
+DEFAULT_AUTH_METHOD="auto"        # auto | ssh | https
 DEFAULT_COMMIT_TEMPLATE="自动同步: {timestamp} [{hostname}]"
 
 # --- 日志 ---
@@ -68,10 +70,11 @@ load_config() {
             value=$(echo "$value" | tr -d '"'"' ")
             case "$key" in
                 GITHUB_TOKEN)      : ;;  # Token 由 get_token 处理
-                SYNC_INTERVAL)     SYNC_INTERVAL="$value" ;;
-                CONFLICT_STRATEGY) CONFLICT_STRATEGY="$value" ;;
-                GIT_BRANCH)        GIT_BRANCH="$value" ;;
-                COMMIT_TEMPLATE)   COMMIT_TEMPLATE="$value" ;;
+            SYNC_INTERVAL)     SYNC_INTERVAL="$value" ;;
+            CONFLICT_STRATEGY) CONFLICT_STRATEGY="$value" ;;
+            GIT_BRANCH)        GIT_BRANCH="$value" ;;
+            AUTH_METHOD)       AUTH_METHOD="$value" ;;
+            COMMIT_TEMPLATE)   COMMIT_TEMPLATE="$value" ;;
                 SYNC_ITEMS)        IFS=',' read -ra SYNC_ITEMS <<< "$value" ;;
                 EXCLUDE_ITEMS)     IFS=',' read -ra EXCLUDE_ITEMS <<< "$value" ;;
                 LOG_LEVEL)         LOG_LEVEL="$value" ;;
@@ -85,6 +88,7 @@ load_config() {
     SYNC_INTERVAL="${SYNC_INTERVAL:-$DEFAULT_SYNC_INTERVAL}"
     CONFLICT_STRATEGY="${CONFLICT_STRATEGY:-$DEFAULT_CONFLICT_STRATEGY}"
     GIT_BRANCH="${GIT_BRANCH:-$DEFAULT_GIT_BRANCH}"
+    AUTH_METHOD="${AUTH_METHOD:-$DEFAULT_AUTH_METHOD}"
     COMMIT_TEMPLATE="${COMMIT_TEMPLATE:-$DEFAULT_COMMIT_TEMPLATE}"
 
     # 默认同步项
@@ -104,6 +108,7 @@ load_config() {
             "sessions/" "checkpoints/" "state-snapshots/"
             "sandboxes/" "pairing/"
             "weixin/" "feishu_*"
+            ".usage.json"
         )
     fi
 }
@@ -116,24 +121,130 @@ get_github_username() {
         python3 -c "import sys,json; print(json.load(sys.stdin).get('login',''))" 2>/dev/null
 }
 
+# --- 认证方式检测 ---
+# 返回 "ssh" 或 "https"
+detect_auth_method() {
+    # 如果用户显式指定了，直接用
+    if [ "$AUTH_METHOD" = "ssh" ]; then
+        echo "ssh"; return 0
+    elif [ "$AUTH_METHOD" = "https" ]; then
+        echo "https"; return 0
+    fi
+
+    # auto 模式：检测 SSH 配置是否存在
+    # 检查常见的 SSH Host 别名
+    for host in "github.com-hermes-sync" "github.com"; do
+        if ssh -o ConnectTimeout=3 -o StrictHostKeyChecking=no -T "$host" 2>&1 | grep -q "successfully authenticated"; then
+            echo "ssh"; return 0
+        fi
+    done
+
+    # 如果 SSH 不通，回退到 HTTPS
+    echo "https"; return 0
+}
+
+# Git 远程仓库管理（支持 SSH 和 HTTPS）
 ensure_remote() {
-    local token="$1"
-    local username="$2"
-    local repo="${3:-hermes-sync}"
+    local username="${1:-}"
+    local repo="${2:-hermes-sync}"
 
     cd "$HERMES_SYNC_DIR"
 
+    local auth_method
+    auth_method=$(detect_auth_method)
+
+    local target_url
+    if [ "$auth_method" = "ssh" ]; then
+        # SSH 方式：干净的 URL
+        target_url="git@github.com-hermes-sync:${username}/${repo}.git"
+    else
+        # HTTPS 方式：URL 不含 Token（Token 在 push/pull 时通过 credential helper 传入）
+        target_url="https://github.com/${username}/${repo}.git"
+    fi
+
     if git remote get-url origin &>/dev/null; then
-        # 检查是否需要更新
         local current_url
         current_url=$(git remote get-url origin)
-        if ! echo "$current_url" | grep -q "$token"; then
-            git remote set-url origin "https://${token}@github.com/${username}/${repo}.git"
-            log_info "已更新 git remote"
+        if [ "$current_url" != "$target_url" ]; then
+            git remote set-url origin "$target_url"
+            log_info "已更新 git remote → $target_url"
         fi
     else
-        git remote add origin "https://${token}@github.com/${username}/${repo}.git"
-        log_info "已添加 git remote"
+        git remote add origin "$target_url"
+        log_info "已添加 git remote → $target_url"
+    fi
+}
+
+# --- 认证 Git 操作 ---
+# 推送（自动选择 SSH 或 HTTPS+Token）
+git_push_with_auth() {
+    local branch="${1:-$GIT_BRANCH}"
+
+    local auth_method
+    auth_method=$(detect_auth_method)
+
+    if [ "$auth_method" = "ssh" ]; then
+        git push origin "$branch" 2>&1
+    else
+        local token
+        token=$(get_token 2>/dev/null)
+        if [ -z "$token" ]; then
+            echo "❌ 未找到 GitHub Token" >&2
+            return 1
+        fi
+        export GIT_TERMINAL_PROMPT=0
+        export GIT_ASKPASS=/bin/true
+        git -c "credential.helper=" \
+            -c "credential.helper=!f() { echo \"password=$token\"; }; f" \
+            push origin "$branch" 2>&1
+    fi
+}
+
+# 拉取（自动选择 SSH 或 HTTPS+Token）
+git_pull_with_auth() {
+    local branch="${1:-$GIT_BRANCH}"
+
+    local auth_method
+    auth_method=$(detect_auth_method)
+
+    if [ "$auth_method" = "ssh" ]; then
+        git pull origin "$branch" 2>&1
+    else
+        local token
+        token=$(get_token 2>/dev/null)
+        if [ -z "$token" ]; then
+            echo "⚠️  未找到 GitHub Token" >&2
+            return 1
+        fi
+        export GIT_TERMINAL_PROMPT=0
+        export GIT_ASKPASS=/bin/true
+        git -c "credential.helper=" \
+            -c "credential.helper=!f() { echo \"password=$token\"; }; f" \
+            pull origin "$branch" 2>&1
+    fi
+}
+
+# 拉取合并（处理 divergent branches）
+git_pull_merge_with_auth() {
+    local branch="${1:-$GIT_BRANCH}"
+
+    local auth_method
+    auth_method=$(detect_auth_method)
+
+    if [ "$auth_method" = "ssh" ]; then
+        git pull --no-rebase origin "$branch" 2>&1
+    else
+        local token
+        token=$(get_token 2>/dev/null)
+        if [ -z "$token" ]; then
+            echo "⚠️  未找到 GitHub Token" >&2
+            return 1
+        fi
+        export GIT_TERMINAL_PROMPT=0
+        export GIT_ASKPASS=/bin/true
+        git -c "credential.helper=" \
+            -c "credential.helper=!f() { echo \"password=$token\"; }; f" \
+            pull --no-rebase origin "$branch" 2>&1
     fi
 }
 

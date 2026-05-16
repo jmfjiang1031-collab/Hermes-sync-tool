@@ -3,6 +3,7 @@
 # Hermes Sync — 上传脚本 (本地 → GitHub)
 # ============================================================
 set -e
+set -o pipefail  # 确保管道中任一命令失败都能被捕获
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
@@ -32,7 +33,7 @@ USERNAME=$(get_github_username "$TOKEN")
 if [ -z "$USERNAME" ]; then
     log_warn "无法获取 GitHub 用户名（网络问题），将使用现有 remote"
 else
-    ensure_remote "$TOKEN" "$USERNAME" "hermes-sync"
+    ensure_remote "$USERNAME" "hermes-sync"
 fi
 
 # --- 同步文件 ---
@@ -72,13 +73,24 @@ git add -A
 COMMIT_MSG=$(generate_commit_msg)
 git commit -m "$COMMIT_MSG"
 
-# 推送
+# 推送（使用认证感知的推送函数，自动选择 SSH 或 HTTPS+Token）
 log_info "正在推送到 GitHub..."
-if git push origin "$GIT_BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
+if git_push_with_auth "$GIT_BRANCH" | tee -a "$LOG_FILE"; then
     log_info "✅ 上传成功"
 else
-    log_error "上传失败，请检查网络和 Token"
-    exit 1
+    log_error "上传失败——远程可能有新提交，尝试拉取合并后重推..."
+    if git_pull_merge_with_auth "$GIT_BRANCH" | tee -a "$LOG_FILE"; then
+        log_info "合并成功，重新推送..."
+        if git_push_with_auth "$GIT_BRANCH" | tee -a "$LOG_FILE"; then
+            log_info "✅ 上传成功"
+        else
+            log_error "上传失败，请检查网络和认证配置"
+            exit 1
+        fi
+    else
+        log_error "合并失败，请手动处理冲突"
+        exit 1
+    fi
 fi
 
 log_info "══════════════════════════════════════"

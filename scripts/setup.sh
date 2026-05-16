@@ -56,6 +56,16 @@ if [ ${#MISSING[@]} -gt 0 ]; then
 fi
 echo -e "${GREEN}  ✓ 所有依赖已就绪${NC}"
 
+# 检查 SSH 配置
+HAS_SSH=false
+if [ -f "$HOME/.ssh/config" ] && grep -q "github.com-hermes-sync" "$HOME/.ssh/config" 2>/dev/null; then
+    HAS_SSH=true
+    echo -e "${GREEN}  ✓ 检测到 SSH 配置（github.com-hermes-sync）${NC}"
+elif ssh -o ConnectTimeout=3 -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    echo -e "${YELLOW}  ⚠  GitHub SSH 可用，但未配置 hermes-sync Host 别名${NC}"
+    echo "     可运行 scripts/setup-ssh.sh 来配置"
+fi
+
 # 检查 Hermes
 if [ -d "$HOME/.hermes" ]; then
     echo -e "${GREEN}  ✓ 检测到 Hermes Agent${NC}"
@@ -109,8 +119,14 @@ case "$REPO_CHOICE" in
         read -r -p "仓库名 (默认 hermes-sync): " GH_REPO
         GH_REPO="${GH_REPO:-hermes-sync}"
 
-        if [ -n "$TOKEN" ]; then
-            CLONE_URL="https://${TOKEN}@github.com/${GH_USER}/${GH_REPO}.git"
+        if [ -n "$TOKEN" ] || [ "$HAS_SSH" = true ]; then
+            if [ "$HAS_SSH" = true ]; then
+                CLONE_URL="git@github.com-hermes-sync:${GH_USER}/${GH_REPO}.git"
+                echo "  使用 SSH 方式..."
+            else
+                CLONE_URL="https://${TOKEN}@github.com/${GH_USER}/${GH_REPO}.git"
+                echo "  使用 HTTPS+Token 方式..."
+            fi
             if [ -d "$SYNC_DIR/.git" ]; then
                 echo "  已有仓库，正在更新..."
                 cd "$SYNC_DIR"
@@ -176,6 +192,9 @@ EXCLUDE_ITEMS=node_modules/,venv/,__pycache__/,*.pyc,.env,*.bak,cache/,audio_cac
 
 # 日志级别: 0=安静 1=普通 2=详细
 LOG_LEVEL=1
+
+# 认证方式: auto(自动检测) | ssh | https
+AUTH_METHOD=auto
 CONFEOF
 
 echo -e "${GREEN}  ✓ 配置已生成: $SYNC_DIR/sync.conf${NC}"
@@ -256,6 +275,21 @@ else
     echo "  请手动设置定时任务:"
     echo "  crontab -e"
     echo "  添加: */30 * * * * $SYNC_DIR/scripts/sync-push.sh"
+fi
+
+# ==========================================
+# WSL 特殊处理：配置 sudoers（cron 免密启动）
+# ==========================================
+if grep -qi "microsoft" /proc/version 2>/dev/null; then
+    echo ""
+    echo -e "${YELLOW}▶ WSL 环境检测到，配置 sudoers...${NC}"
+    SUDOERS_FILE="/etc/sudoers.d/hermes-cron"
+    if [ ! -f "$SUDOERS_FILE" ]; then
+        echo "$USER ALL=(ALL) NOPASSWD: /usr/sbin/service cron start, /usr/sbin/service cron status" | sudo tee "$SUDOERS_FILE" > /dev/null 2>&1
+        sudo chmod 440 "$SUDOERS_FILE" 2>/dev/null && \
+            echo -e "${GREEN}  ✓ sudoers 已配置（cron 免密启动）${NC}" || \
+            echo -e "${YELLOW}  ⚠ sudoers 配置失败，请手动运行: bash ~/.hermes/scripts/setup-sudoers.sh${NC}"
+    fi
 fi
 
 # ==========================================
