@@ -73,6 +73,17 @@ git add -A
 COMMIT_MSG=$(generate_commit_msg)
 git commit -m "$COMMIT_MSG"
 
+# 先拉取远程变更，避免多设备分支分叉导致推送失败
+log_info "正在拉取远程变更..."
+if git pull --rebase origin "$GIT_BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
+    log_info "✅ 拉取成功"
+else
+    log_warn "拉取有冲突，尝试合并模式..."
+    git rebase --abort 2>/dev/null || true
+    git pull --no-rebase origin "$GIT_BRANCH" 2>&1 | tee -a "$LOG_FILE" || \
+        log_warn "拉取仍有冲突，将在推送时处理"
+fi
+
 # 推送（使用认证感知的推送函数，自动选择 SSH 或 HTTPS+Token）
 log_info "正在推送到 GitHub..."
 if git_push_with_auth "$GIT_BRANCH" | tee -a "$LOG_FILE"; then
@@ -89,6 +100,8 @@ else
         fi
     else
         log_error "合并失败，请手动处理冲突"
+        log_error "解决方法: cd ~/.hermes-sync && git pull --no-rebase origin main"
+        log_error "然后手动解决冲突后，再运行本脚本重试"
         exit 1
     fi
 fi

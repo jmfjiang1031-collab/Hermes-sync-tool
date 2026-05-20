@@ -160,8 +160,9 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 
 | 问题 | 解决方法 |
 |------|----------|
-| 推送失败（国内） | 切换为 SSH：`bash scripts/setup-ssh.sh` |
-| 推送显示成功但对方没收到 | 旧版脚本 bug — 升级到 v1.2+ 修复了管道吞退出码 |
+| 推送失败: `[rejected] main -> main (fetch first)` | **分支分叉** — 另一台设备在你离线时推送了变更。脚本现在会自动先拉取再推送，但如果冲突较深，需手动处理：`cd ~/.hermes-sync && git pull --no-rebase origin main`，解决冲突后重新运行同步 |
+| 推送失败（国内网络） | 切换为 SSH：`bash scripts/setup-ssh.sh` |
+| 推送显示成功但对方没收到 | 升级到 v1.2+（修复了管道吞退出码） |
 | Token 过期 | 重新运行安装脚本或手动更新 `~/.hermes-sync/.github-token` |
 | SSH 连接超时 | 可能是端口 22 被封，改用 HTTPS+Token |
 | systemd 定时器没运行 | `systemctl --user status hermes-sync.timer` |

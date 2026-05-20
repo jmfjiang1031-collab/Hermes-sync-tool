@@ -153,8 +153,9 @@ When prompted, choose **"Use existing private repo"** and enter the same GitHub 
 
 | Problem | Solution |
 |---------|----------|
-| Push fails (China) | Switch to SSH: `bash scripts/setup-ssh.sh` |
-| Push reports success but nothing arrived | Old script bug — update to v1.2+ which has pipefail fix |
+| Push fails: `[rejected] main -> main (fetch first)` | **Branch divergence** — another machine pushed changes while this one was offline. The script now auto-pulls before pushing. If conflicts persist: `cd ~/.hermes-sync && git pull --no-rebase origin main` and resolve conflicts. |
+| Push fails (China network) | Switch to SSH: `bash scripts/setup-ssh.sh` |
+| Push reports success but nothing arrived | Update to v1.2+ (pipefail fix included) |
 | Token expired | Re-run `setup.sh` or update `~/.hermes-sync/.github-token` |
 | SSH connection timeout | Check if port 22 is blocked; use HTTPS+Token fallback |
 | systemd timer not running | `systemctl --user status hermes-sync.timer` |
