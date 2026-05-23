@@ -57,15 +57,15 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 
 ## 同步哪些内容？
 
-| 内容 | 说明 |
-|------|------|
-| `profiles/` | 自定义角色（researcher、writer 等） |
-| `skills/` | 自定义技能和工作流 |
-| `memories/` | 跨会话记忆 |
-| `cron/` | 定时任务 |
-| `config.yaml` | 主配置文件 |
-| `SOUL.md` | 默认人格描述 |
-| `hooks/` | 自定义钩子脚本 |
+| 内容 | 说明 | 是否同步？ |
+|------|------|-----------|
+| `profiles/` | 自定义角色（researcher、writer 等） | ✅ |
+| `skills/` | 自定义技能和工作流 | ✅ |
+| `memories/` | 跨会话记忆 | ✅ |
+| `SOUL.md` | 默认人格描述 | ✅ |
+| `config.yaml` | 主配置文件 | ❌ 平台特有 |
+| `cron/` | 定时任务 | ❌ 平台特有 |
+| `hooks/` | 自定义钩子脚本 | ❌ 平台特有 |
 
 ### 默认排除的内容（安全考虑）
 
@@ -88,8 +88,9 @@ SYNC_INTERVAL=30
 # 冲突处理: backup(备份) | skip(跳过) | overwrite(覆盖)
 CONFLICT_STRATEGY=backup
 
-# 同步内容（逗号分隔）
-SYNC_ITEMS=profiles,skills,memories,cron,SOUL.md,config.yaml
+# 同步内容（只同步跨机器共享数据）
+# config.yaml 和 cron 各平台不同，各管各的
+SYNC_ITEMS=profiles,skills,memories,SOUL.md
 
 # 日志级别: 0=安静 1=普通 2=详细
 LOG_LEVEL=1
@@ -150,7 +151,6 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 ├── profiles/          ←──┐
 ├── skills/            ←──┤        脚本自动同步
 ├── memories/          ←──┤
-├── config.yaml        ←──┘
 └── state.db           (不同步 — 运行时数据)
 ```
 

@@ -91,9 +91,10 @@ load_config() {
     AUTH_METHOD="${AUTH_METHOD:-$DEFAULT_AUTH_METHOD}"
     COMMIT_TEMPLATE="${COMMIT_TEMPLATE:-$DEFAULT_COMMIT_TEMPLATE}"
 
-    # 默认同步项
+    # 默认同步项（只同步跨机器共享数据）
+    # 不包含 config.yaml 和 cron（各平台不同，各管各的）
     if [ -z "${SYNC_ITEMS[*]}" ]; then
-        SYNC_ITEMS=("profiles" "skills" "memories" "cron" "SOUL.md" "config.yaml" ".hermes_history" "hooks")
+        SYNC_ITEMS=("profiles" "skills" "memories" "SOUL.md")
     fi
 
     # 默认排除项
@@ -248,6 +249,30 @@ git_pull_merge_with_auth() {
     fi
 }
 
+# 仅拉取（不合并）
+git_fetch_with_auth() {
+    local branch="${1:-$GIT_BRANCH}"
+
+    local auth_method
+    auth_method=$(detect_auth_method)
+
+    if [ "$auth_method" = "ssh" ]; then
+        git fetch origin "$branch" 2>&1
+    else
+        local token
+        token=$(get_token 2>/dev/null)
+        if [ -z "$token" ]; then
+            echo "⚠️  未找到 GitHub Token" >&2
+            return 1
+        fi
+        export GIT_TERMINAL_PROMPT=0
+        export GIT_ASKPASS=/bin/true
+        git -c "credential.helper=" \
+            -c "credential.helper=!f() { echo \"password=$token\"; }; f" \
+            fetch origin "$branch" 2>&1
+    fi
+}
+
 # --- 备份管理 ---
 backup_file() {
     local src="$1"
@@ -266,7 +291,7 @@ backup_file() {
 }
 
 # --- 同步操作 ---
-# rsync 封装，带排除列表
+# 文件复制（兼容无 rsync 环境，如原生 Windows）
 sync_copy() {
     local src="$1"
     local dst="$2"
@@ -277,10 +302,17 @@ sync_copy() {
         exclude_args+=(--exclude="$pattern")
     done
 
-    if [ "$delete_flag" = "--delete" ]; then
-        rsync -a --delete "${exclude_args[@]}" "$src" "$dst" 2>/dev/null
+    if command -v rsync &>/dev/null; then
+        if [ "$delete_flag" = "--delete" ]; then
+            rsync -a --delete "${exclude_args[@]}" "$src" "$dst" 2>/dev/null
+        else
+            rsync -a "${exclude_args[@]}" "$src" "$dst" 2>/dev/null
+        fi
     else
-        rsync -a "${exclude_args[@]}" "$src" "$dst" 2>/dev/null
+        # 无 rsync 时用 cp
+        local parent=$(dirname "$dst" 2>/dev/null)
+        mkdir -p "$parent" 2>/dev/null || true
+        cp -r "$src" "$dst" 2>/dev/null
     fi
 }
 
@@ -297,7 +329,7 @@ generate_commit_msg() {
 check_dependencies() {
     local missing=()
 
-    for cmd in git rsync curl; do
+    for cmd in git curl; do
         if ! command -v "$cmd" &>/dev/null; then
             missing+=("$cmd")
         fi

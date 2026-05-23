@@ -57,15 +57,15 @@ Your Hermes data syncs automatically. No manual steps needed.
 
 ## What Gets Synced?
 
-| Item | Description |
-|------|-------------|
-| `profiles/` | Custom Agent profiles (researcher, writer, etc.) |
-| `skills/` | Custom skills and workflows |
-| `memories/` | Cross-session memory |
-| `cron/` | Scheduled cron jobs |
-| `config.yaml` | Main Hermes configuration |
-| `SOUL.md` | Default personality |
-| `hooks/` | Custom hooks |
+| Item | Description | Sync? |
+|------|-------------|-------|
+| `profiles/` | Custom Agent profiles (researcher, writer, etc.) | ✅ |
+| `skills/` | Custom skills and workflows | ✅ |
+| `memories/` | Cross-session memory | ✅ |
+| `SOUL.md` | Default personality | ✅ |
+| `config.yaml` | Main Hermes configuration | ❌ Platform-specific |
+| `cron/` | Scheduled cron jobs | ❌ Platform-specific |
+| `hooks/` | Custom hooks | ❌ Platform-specific |
 
 ### What's Excluded (by default)?
 
@@ -84,7 +84,10 @@ Edit `~/.hermes-sync/sync.conf`:
 ```ini
 SYNC_INTERVAL=30              # Backup every 30 minutes
 CONFLICT_STRATEGY=backup      # backup | skip | overwrite
-SYNC_ITEMS=profiles,skills    # Customize what to sync
+
+# Only shared data — config.yaml & cron are machine-specific
+SYNC_ITEMS=profiles,skills,memories,SOUL.md
+
 LOG_LEVEL=1                   # 0=quiet 1=normal 2=verbose
 ```
 
@@ -143,7 +146,7 @@ When prompted, choose **"Use existing private repo"** and enter the same GitHub 
 ├── profiles/          ←──┐
 ├── skills/            ←──┤        Auto-synced by scripts
 ├── memories/          ←──┤
-├── config.yaml        ←──┘
+├── config.yaml        (not synced — platform-specific)
 └── state.db           (not synced — runtime only)
 ```
 

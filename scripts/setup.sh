@@ -184,8 +184,9 @@ CONFLICT_STRATEGY=backup
 # Git 分支
 GIT_BRANCH=main
 
-# 同步内容（逗号分隔）
-SYNC_ITEMS=profiles,skills,memories,cron,SOUL.md,config.yaml,.hermes_history,hooks
+# 同步内容（逗号分隔，只同步跨机器共享数据）
+# 不包含 config.yaml 和 cron（各平台不同，各管各的）
+SYNC_ITEMS=profiles,skills,memories,SOUL.md
 
 # 排除模式（逗号分隔）
 EXCLUDE_ITEMS=node_modules/,venv/,__pycache__/,*.pyc,.env,*.bak,cache/,audio_cache/,image_cache/,logs/,state.db*,kanban.db*,response_store.db*,gateway.*,processes.json,sessions/,checkpoints/,state-snapshots/
