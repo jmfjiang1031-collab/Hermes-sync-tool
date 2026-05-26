@@ -79,6 +79,10 @@ fi
 log_info "检测到变更，正在提交..."
 git add -A
 
+# 恢复所有 .sh 脚本的可执行权限（Windows Git core.filemode=false 不保存执行位）
+fix_sh_permissions "$HERMES_SYNC_DIR" "true"
+git add -A  # 重新 add（确保修正后的权限入库）
+
 COMMIT_MSG=$(generate_commit_msg)
 git commit -m "$COMMIT_MSG"
 

@@ -273,6 +273,40 @@ git_fetch_with_auth() {
     fi
 }
 
+# --- 权限修复（跨平台关键！Windows Git core.filemode=false 不保存执行位） ---
+fix_sh_permissions() {
+    local target_dir="${1:-$HERMES_SYNC_DIR}"
+    local fix_git_index="${2:-false}"  # true = 同时修复 Git 索引
+
+    if [ ! -d "$target_dir" ]; then
+        log_debug "目录不存在，跳过权限修复: $target_dir"
+        return
+    fi
+
+    # 1. 修复文件系统执行权限
+    find "$target_dir" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+    log_info "  ✅ 恢复 $target_dir 下 .sh 脚本执行权限"
+
+    # 2. 修复 Git 索引中的执行位（推送脚本用）
+    if [ "$fix_git_index" = "true" ] && [ -d "$target_dir/.git" ]; then
+        local repo_dir="$target_dir"
+        # 如果是文件而非目录，用其父目录
+        [ -f "$target_dir" ] && repo_dir=$(dirname "$target_dir")
+
+        # 检查是否在 Git 仓库内
+        if git -C "$repo_dir" rev-parse --git-dir &>/dev/null; then
+            local fixed=0
+            while IFS=$' \t' read -r mode hash stage file; do
+                if [ "${mode:3:1}" != "7" ]; then
+                    git -C "$repo_dir" update-index --chmod=+x "$file" 2>/dev/null || true
+                    ((fixed++)) || true
+                fi
+            done < <(git -C "$repo_dir" ls-files -s '*.sh' 2>/dev/null)
+            [ "$fixed" -gt 0 ] && log_info "  🔧 修复 Git 索引中 $fixed 个 .sh 文件权限"
+        fi
+    fi
+}
+
 # --- 备份管理 ---
 backup_file() {
     local src="$1"

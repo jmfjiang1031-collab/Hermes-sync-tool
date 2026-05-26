@@ -36,6 +36,9 @@ fi
 
 git reset --hard origin/"$GIT_BRANCH" 2>&1 | tee -a "$LOG_FILE"
 
+# 恢复所有 .sh 脚本的可执行权限（Windows Git core.filemode=false 不保存执行位）
+fix_sh_permissions "$HERMES_SYNC_DIR" "false"
+
 AFTER=$(git rev-parse HEAD 2>/dev/null || echo "none")
 if [ "$BEFORE" != "$AFTER" ]; then
     log_info "✅ 已更新到最新版本"
