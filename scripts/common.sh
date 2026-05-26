@@ -12,7 +12,7 @@ CONFIG_FILE="${HERMES_SYNC_DIR}/sync.conf"
 TOKEN_FILE="${HERMES_SYNC_DIR}/.github-token"
 LOG_FILE="${HERMES_SYNC_DIR}/sync.log"
 BACKUP_DIR="${HERMES_SYNC_DIR}/backups"
-LAST_PULL_FILE="${HERMES_SYNC_DIR}/.last-pull-time"
+LAST_PULL_FILE="${HERMES_SYNC_DIR}/.last-pull-time"  # shellcheck disable=SC2034
 
 # 默认配置
 DEFAULT_SYNC_INTERVAL=30          # 分钟
@@ -78,8 +78,8 @@ load_config() {
                 SYNC_ITEMS)        IFS=',' read -ra SYNC_ITEMS <<< "$value" ;;
                 EXCLUDE_ITEMS)     IFS=',' read -ra EXCLUDE_ITEMS <<< "$value" ;;
                 LOG_LEVEL)         LOG_LEVEL="$value" ;;
-                NOTIFY_ON_SUCCESS) NOTIFY_ON_SUCCESS="$value" ;;
-                NOTIFY_ON_FAILURE) NOTIFY_ON_FAILURE="$value" ;;
+                NOTIFY_ON_SUCCESS) NOTIFY_ON_SUCCESS="$value" ;;  # shellcheck disable=SC2034
+                NOTIFY_ON_FAILURE) NOTIFY_ON_FAILURE="$value" ;;  # shellcheck disable=SC2034
             esac
         done < <(grep -v '^#' "$CONFIG_FILE" | grep -v '^$')
     fi
@@ -149,7 +149,7 @@ ensure_remote() {
     local username="${1:-}"
     local repo="${2:-hermes-sync}"
 
-    cd "$HERMES_SYNC_DIR"
+    cd "$HERMES_SYNC_DIR" || { log_error "无法进入同步目录: $HERMES_SYNC_DIR"; return 1; }
 
     local auth_method
     auth_method=$(detect_auth_method)
@@ -296,7 +296,7 @@ fix_sh_permissions() {
         # 检查是否在 Git 仓库内
         if git -C "$repo_dir" rev-parse --git-dir &>/dev/null; then
             local fixed=0
-            while IFS=$' \t' read -r mode hash stage file; do
+            while IFS=$' \t' read -r mode _ _ file; do
                 if [ "${mode:3:1}" != "7" ]; then
                     git -C "$repo_dir" update-index --chmod=+x "$file" 2>/dev/null || true
                     ((fixed++)) || true
@@ -316,7 +316,8 @@ backup_file() {
         return 0
     fi
 
-    local backup_name="${item_name//\//_}_$(date '+%Y%m%d_%H%M%S')"
+    local backup_name
+    backup_name="${item_name//\//_}_$(date '+%Y%m%d_%H%M%S')"
     cp -a "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null && \
         log_debug "备份: $item_name → $backup_name"
 
@@ -344,7 +345,8 @@ sync_copy() {
         fi
     else
         # 无 rsync 时用 cp
-        local parent=$(dirname "$dst" 2>/dev/null)
+        local parent
+        parent=$(dirname "$dst" 2>/dev/null)
         mkdir -p "$parent" 2>/dev/null || true
         cp -r "$src" "$dst" 2>/dev/null
     fi
