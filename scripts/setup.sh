@@ -200,6 +200,12 @@ CONFEOF
 
 echo -e "${GREEN}  ✓ 配置已生成: $SYNC_DIR/sync.conf${NC}"
 
+# 创建 .gitignore（防止 profiles 递归嵌套等问题）
+if [ ! -f "$SYNC_DIR/.gitignore" ]; then
+    cp "$SCRIPT_DIR/../config/gitignore.example" "$SYNC_DIR/.gitignore" 2>/dev/null || true
+    echo -e "${GREEN}  ✓ .gitignore 已创建${NC}"
+fi
+
 # ==========================================
 # systemd 定时器
 # ==========================================

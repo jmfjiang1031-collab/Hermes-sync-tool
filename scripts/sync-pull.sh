@@ -66,6 +66,13 @@ for item in "${SYNC_ITEMS[@]}"; do
     ((COPIED_COUNT++)) || true
 done
 
+# ★★★ 防止 profiles 递归嵌套 ★★★
+rm -rf "$HERMES_DIR/profiles/profiles" 2>/dev/null || true
+
+# 清理 3 天前的旧备份
+find "$BACKUP_DIR" -maxdepth 1 -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
+log_debug "  🧹 清理旧备份（保留3天）"
+
 log_info "已更新 $COPIED_COUNT 个同步项"
 log_info "✅ 下载完成"
 log_info "══════════════════════════════════════"

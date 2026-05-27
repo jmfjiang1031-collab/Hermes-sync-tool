@@ -75,6 +75,11 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 - 📦 **依赖包：** `node_modules/`、`venv/`
 - 📝 **日志和会话：** `logs/`、`sessions/`
 
+### 已知问题修复
+
+- 🐛 **profiles 递归嵌套**：已修复 `profiles/profiles/` 递归嵌套 bug，同步脚本会自动清理
+- 📁 **备份目录外移**：备份文件已从仓库内 `backups/` 移至 `~/.hermes-sync-backups/`（仓库外），自动清理3天前的旧备份
+
 ---
 
 ## 配置文件
@@ -141,7 +146,7 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 ├── sync.conf                      # 你的配置
 ├── .github-token                  # Token（权限 600）
 ├── .git/                          # Git 仓库 → GitHub
-├── backups/                       # 覆盖前的备份
+├── (backups已移至 ~/.hermes-sync-backups/) # 仓库外备份
 ├── profiles/                      # 从 ~/.hermes/ 同步而来
 ├── skills/
 ├── memories/
@@ -166,7 +171,7 @@ curl -fsSL https://raw.githubusercontent.com/jmfjiang1031-collab/hermes-sync-too
 | Token 过期 | 重新运行安装脚本或手动更新 `~/.hermes-sync/.github-token` |
 | SSH 连接超时 | 可能是端口 22 被封，改用 HTTPS+Token |
 | systemd 定时器没运行 | `systemctl --user status hermes-sync.timer` |
-| 拉取时有冲突 | 旧文件被备份到 `~/.hermes-sync/backups/` |
+| 拉取时有冲突 | 旧文件被备份到 `~/.hermes-sync-backups/`（仓库外，3天自动清理） |
 | WSL 重启后 cron 不运行 | `sudo service cron start`（一次性）或运行 `setup-sudoers.sh` |
 | `.usage.json` 合并冲突 | v1.2 已修复 — 该文件已移出同步列表 |
 

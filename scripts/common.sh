@@ -11,7 +11,7 @@ HERMES_DIR="${HERMES_DIR:-$HOME/.hermes}"
 CONFIG_FILE="${HERMES_SYNC_DIR}/sync.conf"
 TOKEN_FILE="${HERMES_SYNC_DIR}/.github-token"
 LOG_FILE="${HERMES_SYNC_DIR}/sync.log"
-BACKUP_DIR="${HERMES_SYNC_DIR}/backups"
+BACKUP_DIR="${HOME}/.hermes-sync-backups"
 LAST_PULL_FILE="${HERMES_SYNC_DIR}/.last-pull-time"  # shellcheck disable=SC2034
 
 # 默认配置
@@ -321,8 +321,8 @@ backup_file() {
     cp -a "$src" "$BACKUP_DIR/$backup_name" 2>/dev/null && \
         log_debug "备份: $item_name → $backup_name"
 
-    # 清理超过 30 天的备份
-    find "$BACKUP_DIR" -type f -mtime +30 -delete 2>/dev/null || true
+    # 清理超过 3 天的旧备份
+    find "$BACKUP_DIR" -maxdepth 1 -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
 }
 
 # --- 同步操作 ---

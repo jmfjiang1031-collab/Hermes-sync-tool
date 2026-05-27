@@ -43,7 +43,7 @@
 ### sync-pull.sh（下载）
 1. 读取 `sync.conf` 配置
 2. `git fetch` + `git reset --hard` 从 GitHub 拉取最新
-3. 覆盖前自动备份到 `backups/`
+3. 覆盖前自动备份到 `~/.hermes-sync-backups/`（仓库外，避免占用 Git 空间）
 4. 拉取失败时自动回退代理
 
 ### setup.sh（安装）
@@ -57,7 +57,7 @@
 - 统一的日志系统
 - Token 管理（环境变量 > 配置文件 > Token文件）
 - 配置解析
-- 备份管理（自动清理30天前的备份）
+- 备份管理（备份存仓库外 `~/.hermes-sync-backups/`，自动清理3天前的备份）
 - 认证 Git 操作（SSH 和 HTTPS+Token 两套）
 - 代理回退逻辑（直连失败自动用代理）
 
@@ -77,4 +77,4 @@ v2.0 起 Hermes Sync 原生支持 Windows（不依赖 WSL）：
 | 存储层 | GitHub 私有仓库 |
 | 认证层 | Personal Access Token（最小权限：仅 repo） |
 | 文件层 | `.gitignore` 排除密钥、令牌、运行时数据 |
-| 本地层 | Token 文件权限 600，备份机制防覆盖 |
+| 本地层 | Token 文件权限 600，备份机制防覆盖（仓库外保留3天） |

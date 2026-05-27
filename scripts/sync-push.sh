@@ -69,6 +69,9 @@ rm -f "$HERMES_SYNC_DIR/skills/.bundled_manifest" 2>/dev/null || true
 rm -rf "$HERMES_SYNC_DIR/skills/.hub" 2>/dev/null || true
 find "$HERMES_SYNC_DIR/profiles" -name ".curator_backups" -type d -exec rm -rf {} + 2>/dev/null || true
 
+# ★★★ 防止 profiles 递归嵌套（profiles/profiles 是 bug，必须删除）★★★
+rm -rf "$HERMES_SYNC_DIR/profiles/profiles" 2>/dev/null || true
+
 # --- Git 操作 ---
 if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
     log_info "没有新变更，跳过提交"
