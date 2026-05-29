@@ -1,78 +1,65 @@
 #!/bin/bash
 # ============================================================
-# Hermes Sync — 下载脚本 (GitHub → 本地)
-# 只同步共享数据（skills, profiles, memories, SOUL.md）
-# 兼容 WSL（需代理）和 Windows 原生环境
+# Hermes Sync — 拉取同步（GitHub → 本机）
+# 同步内容：skills, profiles, SOUL.md
 # ============================================================
 set -e
 set -o pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-load_config
+SYNC_DIR="${HERMES_SYNC_DIR:-$HOME/.hermes-sync}"
+HERMES_DIR="${HERMES_DIR:-$HOME/.hermes}"
+BACKUP_DIR="${HOME}/.hermes-sync-backups"
+SYNC_ITEMS=("skills" "profiles" "SOUL.md")
+REMOTE="${HERMES_SYNC_REMOTE:-git@github.com:YOUR_USERNAME/hermes-sync.git}"
+BRANCH="${HERMES_SYNC_BRANCH:-main}"
 
-log_info "══════════════════════════════════════"
-log_info "  Hermes Sync — 下载 (GitHub → 本地)"
-log_info "══════════════════════════════════════"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"; }
 
-check_dependencies || exit 1
-check_token || exit 1
+log "═══ 拉取同步（GitHub → 本机）═══"
 
-cd "$HERMES_SYNC_DIR"
+cd "$SYNC_DIR"
 
-# 拉取最新
-log_info "正在从 GitHub 拉取..."
+log "正在从 GitHub 拉取..."
 BEFORE=$(git rev-parse HEAD 2>/dev/null || echo "none")
 
-if ! git_fetch_with_auth 2>&1 | tee -a "$LOG_FILE"; then
-    log_warn "直连失败，尝试代理..."
-    export https_proxy=http://127.0.0.1:7897
-    export http_proxy=http://127.0.0.1:7897
-    if ! git_fetch_with_auth 2>&1 | tee -a "$LOG_FILE"; then
-        log_error "拉取失败——网络不通"
-        exit 1
-    fi
+if ! git fetch origin "$BRANCH" 2>&1; then
+    log "❌ 拉取失败，请检查 SSH 连接和代理状态"
+    exit 1
 fi
 
-git reset --hard origin/"$GIT_BRANCH" 2>&1 | tee -a "$LOG_FILE"
-
-# 恢复所有 .sh 脚本的可执行权限（Windows Git core.filemode=false 不保存执行位）
-fix_sh_permissions "$HERMES_SYNC_DIR" "false"
+git reset --hard "origin/$BRANCH" 2>&1
 
 AFTER=$(git rev-parse HEAD 2>/dev/null || echo "none")
 if [ "$BEFORE" != "$AFTER" ]; then
-    log_info "✅ 已更新到最新版本"
+    log "✅ 已更新到最新版本"
 else
-    log_info "✅ 已是最新版本"
+    log "✅ 已是最新版本"
 fi
 
-mkdir -p "$BACKUP_DIR"
+# 清理运行时文件
+rm -rf "$SYNC_DIR/skills/.curator_backups" "$SYNC_DIR/skills/.usage.json" \
+       "$SYNC_DIR/skills/apple" "$SYNC_DIR/profiles/profiles" 2>/dev/null || true
 
-# 只同步共享数据
-COPIED_COUNT=0
+# 备份 + 复制
+mkdir -p "$BACKUP_DIR"
+find "$BACKUP_DIR" -maxdepth 1 -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
+
+log "正在更新本地文件..."
 for item in "${SYNC_ITEMS[@]}"; do
-    src="$HERMES_SYNC_DIR/$item"
+    src="$SYNC_DIR/$item"
     dst="$HERMES_DIR/$item"
     [ ! -e "$src" ] && continue
 
-    # 备份本地版本
     if [ -e "$dst" ]; then
         cp -r "$dst" "$BACKUP_DIR/${item}_$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
     fi
 
-    log_info "  更新: $item"
     rm -rf "$dst" 2>/dev/null || true
     cp -r "$src" "$dst"
-    ((COPIED_COUNT++)) || true
+    log "  ✓ $item"
 done
 
-# ★★★ 防止 profiles 递归嵌套 ★★★
 rm -rf "$HERMES_DIR/profiles/profiles" 2>/dev/null || true
 
-# 清理 3 天前的旧备份
-find "$BACKUP_DIR" -maxdepth 1 -type d -mtime +3 -exec rm -rf {} + 2>/dev/null || true
-log_debug "  🧹 清理旧备份（保留3天）"
-
-log_info "已更新 $COPIED_COUNT 个同步项"
-log_info "✅ 下载完成"
-log_info "══════════════════════════════════════"
+log "✅ 拉取完成"
+log "═══ 拉取完成 ═══"

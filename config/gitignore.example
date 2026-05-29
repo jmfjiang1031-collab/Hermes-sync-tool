@@ -1,81 +1,36 @@
-# Hermes Sync — Git忽略规则
-# 复制到 ~/.hermes-sync/.gitignore 使用
+# ===== 白名单模式：默认忽略所有，只同步指定内容 =====
 
-# === 敏感信息（绝不上传） ===
+# 忽略所有
+*
+
+# === 取消忽略：需要同步的内容 ===
+!.gitignore
+!skills/
+!skills/**
+!profiles/
+!profiles/**
+!SOUL.md
+!sync-push.sh
+!sync-pull.sh
+
+# === 排除同步目录内的运行时/缓存文件 ===
+skills/.curator_backups/
+skills/.usage.json
+skills/.curator_state
+skills/.bundled_manifest
+skills/.hub/
+skills/apple/
+
+# profiles 内的缓存
+profiles/*/.curator_backups/
+profiles/*/.usage.json
+profiles/*/.curator_state
+
+# profiles 递归嵌套防护
+profiles/profiles/
+
+# 敏感文件
 .env
-auth.json
-auth.lock
 *.token
 *.key
-*.pem
-
-# === Node.js / Python 依赖 ===
-node_modules/
-venv/
-__pycache__/
-*.pyc
-*.pyo
-
-# === 运行时文件 ===
-gateway.pid
-gateway.lock
-gateway_state.json
-processes.json
-*.pid
-*.lock
-
-# === 数据库文件 ===
-state.db
-state.db-shm
-state.db-wal
-response_store.db
-response_store.db-shm
-response_store.db-wal
-kanban.db
-kanban.db-shm
-kanban.db-wal
-
-# === 缓存 ===
-cache/
-audio_cache/
-image_cache/
-models_dev_cache.json
-
-# === 日志 ===
-logs/
-*.log
-sync.log
-sync-*.log
-cron.log
-
-# === 会话数据 ===
-sessions/
-checkpoints/
-state-snapshots/
-
-# === 沙箱和运行时 ===
-sandboxes/
-pairing/
-
-# === 平台特定 ===
-weixin/
-feishu_seen_message_ids.json
-channel_directory.json
-
-# === Hermes 自带的 Node.js ===
-node/
-
-# === 备份文件（备份已改存仓库外） ===
-*.bak
-backups/
-.usage.json
-
-# === 同步工具临时文件 ===
-.hermes_history
-.last-pull-time
-
-# === PPT 临时输出 ===
-ppt-output/
-
-# === profiles 递归防护（关键！） ===
-profiles/profiles/
+auth.json

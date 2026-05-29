@@ -1,27 +1,14 @@
 # Hermes Sync 配置文件
-# 修改后立即生效，无需重启
+# 环境变量方式（推荐）：export HERMES_SYNC_REMOTE=git@github.com:YOU/hermes-sync.git
 
-# GitHub Token（可选，也可用环境变量 HERMES_SYNC_TOKEN）
-# GITHUB_TOKEN=***
-
-# 同步间隔（分钟），用于 systemd 定时器
-SYNC_INTERVAL=30
-
-# 冲突处理策略: backup(备份旧文件) | skip(跳过) | overwrite(直接覆盖)
-CONFLICT_STRATEGY=backup
+# Git 远程仓库地址
+# HERMES_SYNC_REMOTE=git@github.com:YOUR_USERNAME/hermes-sync.git
 
 # Git 分支
-GIT_BRANCH=main
+# HERMES_SYNC_BRANCH=main
 
-# 同步内容（逗号分隔，只同步跨机器共享数据）
-# 不包含 config.yaml 和 cron（各平台不同，各管各的）
-SYNC_ITEMS=profiles,skills,memories,SOUL.md
+# Hermes 目录（默认 ~/.hermes）
+# HERMES_DIR=~/.hermes
 
-# 排除模式（逗号分隔）
-EXCLUDE_ITEMS=node_modules/,venv/,__pycache__/,*.pyc,.env,*.bak,cache/,audio_cache/,image_cache/,logs/,state.db*,kanban.db*,response_store.db*,gateway.*,processes.json,sessions/,checkpoints/,state-snapshots/
-
-# 日志级别: 0=安静 1=普通 2=详细
-LOG_LEVEL=1
-
-# 认证方式: auto(自动检测) | ssh | https
-AUTH_METHOD=auto
+# 同步仓库目录（默认 ~/.hermes-sync）
+# HERMES_SYNC_DIR=~/.hermes-sync
